@@ -1,0 +1,211 @@
+from asyncio.proactor_events import _ProactorBasePipeTransport
+from cProfile import run
+from re import I
+from string import whitespace
+from turtle import window_height
+from urllib.request import parse_http_list
+import pygame, sys
+from PIL import Image
+import time
+from time import process_time_ns, sleep
+import numpy as np
+from random import randint
+
+class window:
+    def __init__(self, win_size, caption):
+        self.win_size = win_size
+        self.caption = caption        
+        pygame.display.set_caption(self.caption)
+
+    def getWindowSize(self):
+        return self.win_size
+
+
+
+class matrix:
+    def __init__(self, matrixSize):
+        self.matrixSize = matrixSize
+        self.mapMatrix = np.array([[[int(x),int(y)] for y in range(0,matrixSize)] for x in range(0,matrixSize)])
+        self.unvisitedMatrix = [[['u'] for y in range(0,matrixSize)] for x in range(0,matrixSize)]
+        
+    def printMatrix(self):
+        print("==============MATRIX===============")
+        for i in self.mapMatrix:
+            print(*i)
+
+    def printVUP(self):
+        print("==============VUP===============")
+        for i in self.unvisitedMatrix:
+            print(*i)
+
+    def pathArr(self):
+        for i in self.mapMatrix:
+            for j in i:
+                print(j)
+
+    def makeThatDamnPath(self): # find the neighbors of a coordinate
+        
+        #print("=======================================")  
+
+        startingCords = [0,0] # the starting cords of the path
+        #print('starting at:', startingCords)
+        creatingPath = True
+        correntLocation = startingCords
+        pathList = [startingCords]
+        #creatingPath=0
+        thePathToReturn = []
+        while creatingPath:
+            
+            
+            correntLocation = pathList[-1]
+            
+            # find all the neighbors of the coordinate
+            xcord = correntLocation[1]
+            ycord = correntLocation[0]
+            neighbors = [] # create a list of neighbors
+            for idx, i in enumerate(self.mapMatrix):
+                for jdx, j in enumerate(i):
+                        if (j == correntLocation).any() and -1<=(jdx-xcord)<=1 and -1<=(idx-ycord)<=1 and ((jdx-xcord+idx-ycord)!=0):
+                            neighbors.append(j)  # store the neighbors in a list
+            
+            
+            newPathHasBeenCreated = False
+            goBack=True
+            # check if theres unvisited paths between the neighbors
+            for i in neighbors:
+                    if self.unvisitedMatrix[i[0]][i[1]] == ['u']:
+                        goBack=False # dont go back if there is an unvisited neighbor
+
+            # choose a random neighbor and move to it c-current location, set the past coordinate as v-visited
+            while not newPathHasBeenCreated and not goBack:
+                chosenNeighbor = neighbors[randint(0, len(neighbors)-1)] # choose a random neighbor
+                if self.unvisitedMatrix[chosenNeighbor[0]][chosenNeighbor[1]] == ['u']: 
+                    self.unvisitedMatrix[correntLocation[0]][correntLocation[1]] = ['v']
+                    self.unvisitedMatrix[chosenNeighbor[0]][chosenNeighbor[1]] = ['c']
+                    #print('moving to:',chosenNeighbor)
+                    newPathHasBeenCreated = True
+            if newPathHasBeenCreated: 
+                pathList.append(chosenNeighbor) # add the chosen neighbor to the path list
+                thePathToReturn.append(
+                                        {
+                                            'startcords': [correntLocation[0], correntLocation[1]],
+                                            'endcords': [chosenNeighbor[0], chosenNeighbor[1]],
+                                        }
+                                    )
+
+            if goBack: # if we are at an edge and need to go bavk
+                #print('no place to go from here')
+                self.unvisitedMatrix[correntLocation[0]][correntLocation[1]] = ['p']
+                #thePathToReturn.append(correntLocation)
+                
+                pathList.pop(-1)
+            
+            # if all the items in the matrix are 'p'
+            if len(thePathToReturn)==(self.matrixSize)**2-1:
+                creatingPath = False
+                
+            
+            #print("the path is:",pathList) # print the path
+            #self.printVUP() #print the VUP map
+            
+            #print("==================================================================================") 
+        #print("the function will return:", thePathToReturn)
+        
+        return thePathToReturn
+
+    def makePath(self,pathList):
+        
+        for idx, i in enumerate(pathList):
+            path = [pathList[idx]['startcords'], pathList[idx]['endcords']]
+            scaledPath = np.array(path)*30+int(34/2)
+            pygame.draw.rect(gameWindow, 'White', pygame.Rect(scaledPath[0][0]-12,scaledPath[0][1]-12, 24, 24))
+            pygame.draw.rect(gameWindow, 'White', pygame.Rect(scaledPath[1][0]-12,scaledPath[1][1]-12, 24, 24))
+            pygame.draw.line(gameWindow, 'White', scaledPath[0], scaledPath[1], width= 23)#23)
+            
+     
+
+class map:
+    
+    def __init__(self, windowSize):
+        self.mapSize = 3  #30 (reminder)
+        self.mapSizePixels = self.mapSize*100
+        self.windowSize = windowSize
+        self.wallSize = 6
+        self.floorSize = 24
+        matrixScale = (self.floorSize+self.wallSize) #=31
+        self.mapMatrix = [[[int((x+3)+x*(matrixScale)),int((y+3)+y*matrixScale)] for y in range(0,self.mapSize)] for x in range(0,self.mapSize)]
+
+    def getMapMatrix(self): # build the map matrix
+        print("==============MATRIX===============")
+        for i in self.mapMatrix:
+            print(*i)
+
+
+class player:
+    
+    def __init__(self, p_size, p_speed, x, y):
+        self.p_size = p_size
+        self.p_speed = p_speed
+        self.x = x
+        self.y = y
+        self.playerRect = pygame.Rect(self.x,self.y,self.p_size,self.p_size)
+    
+    def movment(self):
+        pressed = pygame.key.get_pressed() 
+        if self.y>0 and pressed[pygame.K_UP]: self.y -= self.p_speed  
+        if self.y<(window1.getWindowSize()-self.p_size) and pressed[pygame.K_DOWN]: self.y += self.p_speed    
+        if self.x>0 and pressed[pygame.K_LEFT]: self.x -= self.p_speed    
+        if self.x<(window1.getWindowSize()-self.p_size) and pressed[pygame.K_RIGHT]: self.x += self.p_speed  
+
+        playerRect = pygame.Rect(self.x,self.y,self.p_size,self.p_size)
+        #draw the new position of the player
+        pygame.draw.rect(gameWindow, 'blue', playerRect) 
+        return playerRect
+    
+    
+    
+# define the player, map, and maze
+window1 = window(905, "Ego Eimi") # sets the window
+matrix1 = matrix(30)
+map1 = map(window1.getWindowSize()) # sets the map and the maze
+player1 = player(15,10,int(window1.getWindowSize()/2)+7,880)
+arr= matrix1.makeThatDamnPath()
+rect1=pygame.Rect(0, 0, 1000, 1000)
+rect2=pygame.Rect((window1.getWindowSize()/2)+7-100, 700, 100, 100)
+
+# initiate game
+pygame.init()
+gameWindow = pygame.display.set_mode((window1.getWindowSize(),  window1.getWindowSize())) 
+playerRect = player1.movment()
+# the main loop (game loop)
+while True:  
+    for event in pygame.event.get():  
+        if event.type == pygame.QUIT:  
+            pygame.quit()  
+            sys.exit()
+    # Background color (walls)
+    #gameWindow.fill('black')  
+    pygame.draw.rect(gameWindow, 'black', rect1)
+    #check for keypress                            
+     
+    # draw the path
+    #map1.createcells()
+    
+    
+
+    # track and show the player's movment
+    
+    
+  
+
+
+    matrix1.makePath(arr)
+ 
+    playerRect = player1.movment()
+    
+
+    # update the screen        
+    pygame.display.flip()  
+
+
+
